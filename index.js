@@ -8,6 +8,64 @@ const app = new App({
   socketMode: true
 });
 
+//memmory for triva game
+let triviaGame = {
+    isActive: false,
+    currentQuestionIndex: 0,
+    scores: {}
+};
+//Trivia questions
+const triviaQuestions = [
+    {
+        question: "What is the closest plant to the Sun?",
+        answer: "Mercury"
+    },
+    {
+        question: "Which galaxy is home to our Solar System?",
+        answer: "Milky Way"
+    },
+    {
+        question: "What is the largest planet in our solar system?",
+        answer: "Jupiter"
+    }
+];
+
+//trivia command
+app.command('/cosmic-trivia', async ({ command, ack, say }) => {
+    await act();
+    if (triviaGame.isActive) {
+        return await say("🚀 A trivia game is already running! Answer the current question.")
+    }
+    triviaGame.isActive = true;
+    triviaGame.currentQuestionIndex = 0;
+    triviaGame.scores = {};
+    await say("🚀 *Cosmic Trivia Started!* First person to type the correct answer in chat gets the point.");
+    await say(`❓ *Question 1:* ${triviaQuestions[0].question}`);
+});
+
+//listen for answers
+app.message(async ({ message, say }) => {
+    if (!triviaGame.isActive || message.bot_id) return;
+    let currentQuestion = triviaQuestions[triviaGame.currentQuestionIndex];
+    let userAnswer = message.text.trim().toLowerCase();
+    if (userAnswer === currentQuestion.answer) {
+        let winner = `<@${message.user}>`;
+        triviaGame.scores[winner] = (triviaGame.scores[winner] || 0) + 1;
+        await say(`🎉 *Correct!* ${winner}! The answer was *${currentQuestion.answer}*.`);
+        triviaGame.currentQuestionIndex++;
+        if (triviaGame.currentQuestionIndex < triviaQuestions.length) {
+            let nextQ = triviaQuestions[triviaGame.currentQuestionIndex];
+            await say(`*Next Question:* ${nextQ.question}`);
+        } else {
+            triviaGame.isActive = false;
+            let scoreboard = "";
+            for (let player in triviaGame.scores) {
+                scoreboard += `${player}: ${triviaGame.scores[player]} points\n`;
+            }
+            await say(`🏆 *Game Over!* Here's the final scoreboard:\n${scoreboard}`);
+        }
+    }
+});
 //help command
 app.command("/cosmic-help", async ({ ack, respond }) => {
     await ack();
