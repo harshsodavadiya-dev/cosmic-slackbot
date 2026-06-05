@@ -17,22 +17,22 @@ let triviaGame = {
 //Trivia questions
 const triviaQuestions = [
     {
-        question: "What is the closest plant to the Sun?",
-        answer: "Mercury"
+        question: "What is the closest planet to the Sun?",
+        answer: "mercury"
     },
     {
         question: "Which galaxy is home to our Solar System?",
-        answer: "Milky Way"
+        answer: "milky way"
     },
     {
         question: "What is the largest planet in our solar system?",
-        answer: "Jupiter"
+        answer: "jupiter"
     }
 ];
 
 //trivia command
 app.command('/cosmic-trivia', async ({ command, ack, say }) => {
-    await act();
+    await ack(); // <-- Change it to 'ack'
     if (triviaGame.isActive) {
         return await say("🚀 A trivia game is already running! Answer the current question.")
     }
@@ -51,8 +51,7 @@ app.message(async ({ message, say }) => {
     if (userAnswer === currentQuestion.answer) {
         let winner = `<@${message.user}>`;
         triviaGame.scores[winner] = (triviaGame.scores[winner] || 0) + 1;
-        await say(`🎉 *Correct!* ${winner}! The answer was *${currentQuestion.answer}*.`);
-        triviaGame.currentQuestionIndex++;
+        await say(`🎉 *Correct!* ${winner}! The answer was *${currentQuestion.answer}*.`);        triviaGame.currentQuestionIndex++;
         if (triviaGame.currentQuestionIndex < triviaQuestions.length) {
             let nextQ = triviaQuestions[triviaGame.currentQuestionIndex];
             await say(`*Next Question:* ${nextQ.question}`);
