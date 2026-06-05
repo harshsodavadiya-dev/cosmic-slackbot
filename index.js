@@ -31,15 +31,22 @@ const triviaQuestions = [
 ];
 
 //trivia command
+// trivia command
 app.command('/cosmic-trivia', async ({ command, ack, respond }) => {
-    await ack();
-    if (triviaGame.isActive) {
-        return await respond("🚀 A trivia game is already running! Answer the current question.");
-    }  
-    triviaGame.isActive = true;
-    triviaGame.currentQuestionIndex = 0;
-    triviaGame.scores = {};
-        await respond("🚀 *Cosmic Trivia Started!* First person to type the correct answer in chat gets the point.\n\n" +`❓ *Question 1:* ${triviaQuestions[0].question}`);
+    await ack(); 
+
+    setTimeout(async () => {
+        if (triviaGame.isActive) {
+            return await respond("🚀 A trivia game is already running! Answer the current question.");
+        }
+        
+        triviaGame.isActive = true;
+        triviaGame.currentQuestionIndex = 0;
+        triviaGame.scores = {};
+        
+        await respond("🚀 *Cosmic Trivia Started!* First person to type the correct answer in chat gets the point.\n\n" +
+                      `❓ *Question 1:* ${triviaQuestions[0].question}`);
+    }, 50);
 });
 
 //listen for answers
