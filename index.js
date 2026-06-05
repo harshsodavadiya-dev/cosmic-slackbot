@@ -8,13 +8,13 @@ const app = new App({
   socketMode: true
 });
 
-//memmory for triva game
 let triviaGame = {
     isActive: false,
     currentQuestionIndex: 0,
     scores: {}
 };
-//Trivia questions
+
+// Trivia questions
 const triviaQuestions = [
     {
         question: "What is the closest planet to the Sun?",
@@ -30,12 +30,16 @@ const triviaQuestions = [
     }
 ];
 
-//trivia command
+// Trivia command
 app.command('/cosmic-trivia', async ({ command, ack, client }) => {
     await ack();
 
     try {
-        await client.conversations.join({ channel: command.channel_id });
+        try {
+            await client.conversations.join({ channel: command.channel_id });
+        } catch (joinError) {
+            console.log("Join skipped or already in channel:", joinError.message);
+        }
 
         if (triviaGame.isActive) {
             await client.chat.postEphemeral({
@@ -61,30 +65,36 @@ app.command('/cosmic-trivia', async ({ command, ack, client }) => {
     }
 });
 
-//listen for answers
-app.message(async ({ message, say }) => {
+// Listen for answers
+app.message(async ({ message, client, say }) => {
     if (!triviaGame.isActive || message.bot_id) return;
+    
     let currentQuestion = triviaQuestions[triviaGame.currentQuestionIndex];
     let userAnswer = message.text.trim().toLowerCase();
+    
     if (userAnswer === currentQuestion.answer) {
         let winner = `<@${message.user}>`;
         triviaGame.scores[winner] = (triviaGame.scores[winner] || 0) + 1;
-        await say(`🎉 *Correct!* ${winner}! The answer was *${currentQuestion.answer}*.`);        triviaGame.currentQuestionIndex++;
+        
+        await say(`🎉 *Correct!* ${winner} got it! The answer was *${currentQuestion.answer}*.`);
+        triviaGame.currentQuestionIndex++;
+        
         if (triviaGame.currentQuestionIndex < triviaQuestions.length) {
             let nextQ = triviaQuestions[triviaGame.currentQuestionIndex];
-            await say(`*Next Question:* ${nextQ.question}`);
+            await say(`❓ *Next Question:* ${nextQ.question}`);
         } else {
             triviaGame.isActive = false;
             let scoreboard = "";
             for (let player in triviaGame.scores) {
                 scoreboard += `${player}: ${triviaGame.scores[player]} points\n`;
             }
+            if (scoreboard === "") scoreboard = "No one scored points!";
             await say(`🏆 *Game Over!* Here's the final scoreboard:\n${scoreboard}`);
         }
     }
 });
 
-// reset command
+// Reset command
 app.command('/cosmic-reset', async ({ ack, respond }) => {
     await ack();
     triviaGame.isActive = false;
@@ -93,15 +103,15 @@ app.command('/cosmic-reset', async ({ ack, respond }) => {
     await respond("🌌 *Cosmic Trivia has been force-reset!* You can now start a fresh game with `/cosmic-trivia`.");
 });
 
-//help command
+// Help command
 app.command("/cosmic-help", async ({ ack, respond }) => {
     await ack();
     await respond({
-        text:`🚀 *CosmicBot Available Commands:*\n•\'/cosmic-ping\' - Check bot latency\n•\'/cosmic-catfact\' - Get a live cat fact\n• \'/cosmic-joke - Get a random joke\n• \'/cosmic-trivia - Play a trivia game`
+        text: `🚀 *CosmicBot Available Commands:*\n• \`/cosmic-ping\` - Check bot latency\n• \`/cosmic-catfact\` - Get a live cat fact\n• \`/cosmic-joke\` - Get a random joke\n• \`/cosmic-trivia\` - Play a trivia game`
     });
 });
 
-//ping command
+// Ping command
 app.command("/cosmic-ping", async ({ ack, respond }) => {
   const start = Date.now();
   await ack();
@@ -109,7 +119,7 @@ app.command("/cosmic-ping", async ({ ack, respond }) => {
   await respond({ text: `*Pong!* Latency: \`${latency}ms\`` });
 });
 
-//cat fact command
+// Cat fact command
 app.command("/cosmic-catfact", async ({ ack, respond }) => {
     await ack();
     try {
@@ -120,12 +130,12 @@ app.command("/cosmic-catfact", async ({ ack, respond }) => {
     }
 });
 
-//joke command
-app.command("/cosmic-joke", async ({ack, respond}) => {
+// Joke command
+app.command("/cosmic-joke", async ({ ack, respond }) => {
     await ack();
     try {
         const response = await axios.get("https://official-joke-api.appspot.com/random_joke");
-        await respond({ text: `🎭 *Joke:*\n_${response.data.setup}_\n\n *${response.data.punchline}*` });
+        await respond({ text: `🎭 *Joke:*\n_${response.data.setup}_\n\n*${response.data.punchline}*` });
     } catch (err) {
         await respond({ text: "❌ Failed to fetch a joke. Please try again later." });
     }
@@ -135,4 +145,3 @@ app.command("/cosmic-joke", async ({ack, respond}) => {
   await app.start();
   console.log("Cosmic bot is running!");
 })();
-
