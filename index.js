@@ -31,16 +31,16 @@ const triviaQuestions = [
 ];
 
 //trivia command
-app.command('/cosmic-trivia', async ({ command, ack, say }) => {
+app.command('/cosmic-trivia', async ({ command, ack, respond }) => {
     await ack(); // <-- Change it to 'ack'
     if (triviaGame.isActive) {
-        return await say("🚀 A trivia game is already running! Answer the current question.")
+        return await respond("🚀 A trivia game is already running! Answer the current question.")
     }
     triviaGame.isActive = true;
     triviaGame.currentQuestionIndex = 0;
     triviaGame.scores = {};
-    await say("🚀 *Cosmic Trivia Started!* First person to type the correct answer in chat gets the point.");
-    await say(`❓ *Question 1:* ${triviaQuestions[0].question}`);
+    await respond("🚀 *Cosmic Trivia Started!* First person to type the correct answer in chat gets the point.");
+    await respond(`❓ *Question 1:* ${triviaQuestions[0].question}`);
 });
 
 //listen for answers
@@ -69,7 +69,7 @@ app.message(async ({ message, say }) => {
 app.command("/cosmic-help", async ({ ack, respond }) => {
     await ack();
     await respond({
-        text:`🚀 *CosmicBot Available Commands:*\n•\'/cosmic-ping\' - Check bot latency\n•\'/cosmic-catfact\' - Get a live cat fact\n• \'/cosmic-joke - Get a random joke`
+        text:`🚀 *CosmicBot Available Commands:*\n•\'/cosmic-ping\' - Check bot latency\n•\'/cosmic-catfact\' - Get a live cat fact\n• \'/cosmic-joke - Get a random joke\n• \'/cosmic-trivia - Play a trivia game`
     });
 });
 
