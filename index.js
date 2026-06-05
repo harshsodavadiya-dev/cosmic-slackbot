@@ -35,6 +35,8 @@ app.command('/cosmic-trivia', async ({ command, ack, client }) => {
     await ack();
 
     try {
+        await client.conversations.join({ channel: command.channel_id });
+
         if (triviaGame.isActive) {
             await client.chat.postEphemeral({
                 channel: command.channel_id,
