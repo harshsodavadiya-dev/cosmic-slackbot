@@ -71,6 +71,16 @@ app.message(async ({ message, say }) => {
         }
     }
 });
+
+// reset command
+app.command('/cosmic-reset', async ({ ack, respond }) => {
+    await ack();
+    triviaGame.isActive = false;
+    triviaGame.currentQuestionIndex = 0;
+    triviaGame.scores = {};
+    await respond("🌌 *Cosmic Trivia has been force-reset!* You can now start a fresh game with `/cosmic-trivia`.");
+});
+
 //help command
 app.command("/cosmic-help", async ({ ack, respond }) => {
     await ack();
