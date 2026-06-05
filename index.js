@@ -8,6 +8,7 @@ const app = new App({
   socketMode: true
 });
 
+// Memory for trivia game
 let triviaGame = {
     isActive: false,
     currentQuestionIndex: 0,
@@ -30,83 +31,96 @@ const triviaQuestions = [
     }
 ];
 
-// Trivia command
-app.command('/cosmic-trivia', async ({ command, ack, client }) => {
-    await ack();
-
+// Trivia command - NUCLEAR OPTION: Payload inside ack()
+app.command("/cosmic-trivia", async ({ ack }) => {
     try {
-        try {
-            await client.conversations.join({ channel: command.channel_id });
-        } catch (joinError) {
-            console.log("Join skipped or already in channel:", joinError.message);
-        }
-
         if (triviaGame.isActive) {
-            await client.chat.postEphemeral({
-                channel: command.channel_id,
-                user: command.user_id,
+            // Respond instantly inside the handshake
+            await ack({
+                response_type: "in_channel",
                 text: "🚀 A trivia game is already running! Answer the current question."
             });
             return;
         }
 
+        // Initialize game memory
         triviaGame.isActive = true;
         triviaGame.currentQuestionIndex = 0;
         triviaGame.scores = {};
 
-        await client.chat.postMessage({
-            channel: command.channel_id,
-            text: "🚀 *Cosmic Trivia Started!* First person to type the correct answer in chat gets the point.\n\n" +
-                  `❓ *Question 1:* ${triviaQuestions[0].question}`
+        const firstQuestion = triviaQuestions[0].question;
+
+        // Send a completely flat string payload directly inside ack()
+        await ack({
+            response_type: "in_channel",
+            text: `🚀 *Cosmic Trivia Started!* First person to type the correct answer in chat gets the point.\n\n❓ *Question 1:* ${firstQuestion}`
         });
 
     } catch (error) {
         console.error("Error running trivia command:", error);
+        await ack("❌ Something went wrong starting the game.");
     }
 });
 
-// Listen for answers
-app.message(async ({ message, client, say }) => {
-    if (!triviaGame.isActive || message.bot_id) return;
-    
-    let currentQuestion = triviaQuestions[triviaGame.currentQuestionIndex];
-    let userAnswer = message.text.trim().toLowerCase();
-    
-    if (userAnswer === currentQuestion.answer) {
-        let winner = `<@${message.user}>`;
-        triviaGame.scores[winner] = (triviaGame.scores[winner] || 0) + 1;
+// Listen for answers - CRASH-PROOFED
+app.message(async ({ message, say }) => {
+    try {
+        // 1. Ignore if game isn't active or if a bot is talking
+        if (!triviaGame.isActive || message.bot_id) return;
         
-        await say(`🎉 *Correct!* ${winner} got it! The answer was *${currentQuestion.answer}*.`);
-        triviaGame.currentQuestionIndex++;
+        // 2. SAFETY CHECK: Ignore the message if it doesn't contain text data (prevents crashes)
+        if (!message.text) return;
         
-        if (triviaGame.currentQuestionIndex < triviaQuestions.length) {
-            let nextQ = triviaQuestions[triviaGame.currentQuestionIndex];
-            await say(`❓ *Next Question:* ${nextQ.question}`);
-        } else {
-            triviaGame.isActive = false;
-            let scoreboard = "";
-            for (let player in triviaGame.scores) {
-                scoreboard += `${player}: ${triviaGame.scores[player]} points\n`;
+        let currentQuestion = triviaQuestions[triviaGame.currentQuestionIndex];
+        let userAnswer = message.text.trim().toLowerCase();
+        
+        // 3. Match the answer
+        if (userAnswer === currentQuestion.answer) {
+            let winner = `<@${message.user}>`;
+            triviaGame.scores[winner] = (triviaGame.scores[winner] || 0) + 1;
+            
+            triviaGame.currentQuestionIndex++;
+            
+            if (triviaGame.currentQuestionIndex < triviaQuestions.length) {
+                let nextQ = triviaQuestions[triviaGame.currentQuestionIndex];
+                
+                await say(`🎉 *Correct!* ${winner} got it! The answer was *${currentQuestion.answer}*.\n\n❓ *Next Question:* ${nextQ.question}`);
+            } else {
+                triviaGame.isActive = false;
+                let scoreboard = "";
+                for (let player in triviaGame.scores) {
+                    scoreboard += `${player}: ${triviaGame.scores[player]} points\n`;
+                }
+                if (scoreboard === "") scoreboard = "No one scored points!";
+                
+                await say(`🎉 *Correct!* ${winner} got it! The answer was *${currentQuestion.answer}*.\n\n🏆 *Game Over!* Here's the final scoreboard:\n${scoreboard}`);
             }
-            if (scoreboard === "") scoreboard = "No one scored points!";
-            await say(`🏆 *Game Over!* Here's the final scoreboard:\n${scoreboard}`);
         }
+    } catch (error) {
+        console.error("Error processing chat message event safely:", error);
     }
 });
 
-// Reset command
-app.command('/cosmic-reset', async ({ ack, respond }) => {
-    await ack();
-    triviaGame.isActive = false;
-    triviaGame.currentQuestionIndex = 0;
-    triviaGame.scores = {};
-    await respond("🌌 *Cosmic Trivia has been force-reset!* You can now start a fresh game with `/cosmic-trivia`.");
+// Reset command - NUCLEAR OPTION: Payload inside ack()
+app.command("/cosmic-reset", async ({ ack }) => {
+    try {
+        triviaGame.isActive = false;
+        triviaGame.currentQuestionIndex = 0;
+        triviaGame.scores = {};
+        
+        await ack({
+            response_type: "in_channel",
+            text: "🌌 *Cosmic Trivia has been force-reset!* You can now start a fresh game with `/cosmic-trivia`."
+        });
+    } catch (error) {
+        console.error("Error resetting game:", error);
+        await ack("❌ Something went wrong resetting the game.");
+    }
 });
 
-// Help command
-app.command("/cosmic-help", async ({ ack, respond }) => {
-    await ack();
-    await respond({
+// Help command - Moved to direct ack() for speed
+app.command("/cosmic-help", async ({ ack }) => {
+    await ack({
         text: `🚀 *CosmicBot Available Commands:*\n• \`/cosmic-ping\` - Check bot latency\n• \`/cosmic-catfact\` - Get a live cat fact\n• \`/cosmic-joke\` - Get a random joke\n• \`/cosmic-trivia\` - Play a trivia game`
     });
 });
