@@ -1,3 +1,4 @@
+// SETUP
 require("dotenv").config();
 const { App } = require("@slack/bolt");
 const axios = require("axios");
@@ -8,15 +9,20 @@ const app = new App({
   socketMode: true
 });
 
+// SPACE MINER STATE
 let spaceMiner = {
     totalMined: 0,
     leaderboard: {}
 };
 
-//command for astriod thingy
+// SPACE MINER COMMAND
 app.command("/cosmic-mine", async ({ ack }) => {
     try {
-        await act({
+        // Reset the progress and leaderboard for a fresh game
+        spaceMiner.totalMined = 0;
+        spaceMiner.leaderboard = {};
+
+        await ack({
             response_type: "in_channel",
             blocks: [
                 {
@@ -45,11 +51,11 @@ app.command("/cosmic-mine", async ({ ack }) => {
         });
     } catch (error) {
         console.error("Error spawning miner:", error);
-        await act("❌ Failed to spawn the asteroid.");
+        await ack("❌ Failed to spawn the asteroid.");
     }
 });
 
-//Looks for button clicks
+// SPACE MINER BUTTON ACTIONS
 app.action("mine_asteroid", async ({ ack, body, respond }) => {
     try{
         await ack();
@@ -103,30 +109,20 @@ app.action("mine_asteroid", async ({ ack, body, respond }) => {
     }
 });
 
-// Memory for trivia game
+// TRIVIA STATE
 let triviaGame = {
     isActive: false,
     currentQuestionIndex: 0,
     scores: {}
 };
 
-// Trivia questions
 const triviaQuestions = [
-    {
-        question: "What is the closest planet to the Sun?",
-        answer: "mercury"
-    },
-    {
-        question: "Which galaxy is home to our Solar System?",
-        answer: "milky way"
-    },
-    {
-        question: "What is the largest planet in our solar system?",
-        answer: "jupiter"
-    }
+    { question: "What is the closest planet to the Sun?", answer: "mercury" },
+    { question: "Which galaxy is home to our Solar System?", answer: "milky way" },
+    { question: "What is the largest planet in our solar system?", answer: "jupiter" }
 ];
 
-// Trivia command
+// TRIVIA START
 app.command("/cosmic-trivia", async ({ ack }) => {
     try {
         if (triviaGame.isActive) {
@@ -137,7 +133,6 @@ app.command("/cosmic-trivia", async ({ ack }) => {
             return;
         }
 
-        // Initialize game memory
         triviaGame.isActive = true;
         triviaGame.currentQuestionIndex = 0;
         triviaGame.scores = {};
@@ -155,11 +150,10 @@ app.command("/cosmic-trivia", async ({ ack }) => {
     }
 });
 
-// Listen for answers
+// TRIVIA ANSWERS
 app.message(async ({ message, say }) => {
     try {
         if (!triviaGame.isActive || message.bot_id) return;
-        
         if (!message.text) return;
         
         let currentQuestion = triviaQuestions[triviaGame.currentQuestionIndex];
@@ -168,12 +162,10 @@ app.message(async ({ message, say }) => {
         if (userAnswer === currentQuestion.answer) {
             let winner = `<@${message.user}>`;
             triviaGame.scores[winner] = (triviaGame.scores[winner] || 0) + 1;
-            
             triviaGame.currentQuestionIndex++;
             
             if (triviaGame.currentQuestionIndex < triviaQuestions.length) {
                 let nextQ = triviaQuestions[triviaGame.currentQuestionIndex];
-                
                 await say(`🎉 *Correct!* ${winner} got it! The answer was *${currentQuestion.answer}*.\n\n❓ *Next Question:* ${nextQ.question}`);
             } else {
                 triviaGame.isActive = false;
@@ -182,7 +174,6 @@ app.message(async ({ message, say }) => {
                     scoreboard += `${player}: ${triviaGame.scores[player]} points\n`;
                 }
                 if (scoreboard === "") scoreboard = "No one scored points!";
-                
                 await say(`🎉 *Correct!* ${winner} got it! The answer was *${currentQuestion.answer}*.\n\n🏆 *Game Over!* Here's the final scoreboard:\n${scoreboard}`);
             }
         }
@@ -191,13 +182,12 @@ app.message(async ({ message, say }) => {
     }
 });
 
-// Reset command
+// TRIVIA RESET
 app.command("/cosmic-reset", async ({ ack }) => {
     try {
         triviaGame.isActive = false;
         triviaGame.currentQuestionIndex = 0;
         triviaGame.scores = {};
-        
         await ack({
             response_type: "in_channel",
             text: "🌌 *Cosmic Trivia has been force-reset!* You can now start a fresh game with `/cosmic-trivia`."
@@ -208,14 +198,13 @@ app.command("/cosmic-reset", async ({ ack }) => {
     }
 });
 
-// Help command
+// UTILITY COMMANDS
 app.command("/cosmic-help", async ({ ack }) => {
     await ack({
-        text: `🚀 *CosmicBot Available Commands:*\n• \`/cosmic-ping\` - Check bot latency\n• \`/cosmic-catfact\` - Get a live cat fact\n• \`/cosmic-joke\` - Get a random joke\n• \`/cosmic-trivia\` - Play a trivia game`
+        text: `🚀 *CosmicBot Available Commands:*\n• \`/cosmic-mine\` - Spawn a clicker mining game\n• \`/cosmic-trivia\` - Play a trivia game\n• \`/cosmic-ping\` - Check bot latency\n• \`/cosmic-catfact\` - Get a live cat fact\n• \`/cosmic-joke\` - Get a random joke`
     });
 });
 
-// Ping command
 app.command("/cosmic-ping", async ({ ack, respond }) => {
   const start = Date.now();
   await ack();
@@ -223,7 +212,6 @@ app.command("/cosmic-ping", async ({ ack, respond }) => {
   await respond({ text: `*Pong!* Latency: \`${latency}ms\`` });
 });
 
-// Cat fact command
 app.command("/cosmic-catfact", async ({ ack, respond }) => {
     await ack();
     try {
@@ -234,7 +222,6 @@ app.command("/cosmic-catfact", async ({ ack, respond }) => {
     }
 });
 
-// Joke command
 app.command("/cosmic-joke", async ({ ack, respond }) => {
     await ack();
     try {
@@ -245,6 +232,7 @@ app.command("/cosmic-joke", async ({ ack, respond }) => {
     }
 });
 
+// BOT START
 (async () => {
   await app.start();
   console.log("Cosmic bot is running!");
