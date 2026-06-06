@@ -8,6 +8,101 @@ const app = new App({
   socketMode: true
 });
 
+let spaceMiner = {
+    totalMined: 0,
+    leaderboard: {}
+};
+
+//command for astriod thingy
+app.command("/cosmic-mine", async ({ ack }) => {
+    try {
+        await act({
+            response_type: "in_channel",
+            blocks: [
+                {
+                    type: "section",
+                    text: {
+                        type: "mrkdwn",
+                        text: "🚨 *A Giant Asteroid has appeared in orbit!* 🌌\nClick the button below to mine it for Stardust! Who will gather the most?"
+                    }
+                },
+                {
+                    type: "actions",
+                    elements: [
+                        {
+                            type: "button",
+                            text: {
+                                type: "plain_text",
+                                text: "Mine the Asteroid! ⛏️",
+                                emoji: true
+                            },
+                            value: "mine_asteroid_click",
+                            action_id: "mine_asteroid"
+                        }
+                    ]
+                }
+            ]
+        });
+    } catch (error) {
+        console.error("Error spawning miner:", error);
+        await act("❌ Failed to spawn the asteroid.");
+    }
+});
+
+//Looks for button clicks
+app.action("mine_asteroid", async ({ ack, body, respond }) => {
+    try{
+        await ack();
+        const userId = body.user.id;
+        const userMention = `<@${userId}>`;
+        const minedAmount = Math.floor(Math.random() * 21 ) + 5;
+        spaceMiner.totalMined += minedAmount;
+        spaceMiner.leaderboard[userMention] = (spaceMiner.leaderboard[userMention] || 0) + minedAmount;
+        let scoreboardText = "";
+        const sortedPlayers = Object.entries(spaceMiner.leaderboard)
+            .sort((a,b) => b[1] - a[1]);
+        for (const [player, score] of sortedPlayers) {
+            scoreboardText += `${player}: ${score} mg* Stardust\n`;
+        }
+        await respond({
+            replace_original: true, 
+            blocks: [
+                {
+                    type: "section",
+                    text: {
+                        type: "mrkdwn",
+                        text: `✨ ${userMention} just mined the asteroid and found *${minedAmount}mg* of Stardust! ⛏️\n\n🪐 *Total Channel Ore Extracted:* \`${spaceMiner.totalMined}mg\``
+                    }
+                },
+                {
+                    type: "section",
+                    text: {
+                        type: "mrkdwn",
+                        text: `🏆 *Space Miner Leaderboard:*\n${scoreboardText}`
+                    }
+                },
+                {
+                    type: "actions",
+                    elements: [
+                        {
+                            type: "button",
+                            text: {
+                                type: "plain_text",
+                                text: "⛏️ KEEP MINING!",
+                                emoji: true
+                            },
+                            value: "mine_asteroid_click",
+                            action_id: "mine_asteroid"
+                        }
+                    ]
+                }
+            ]
+        });
+    } catch (error) {
+        console.error("Error updating leaderboard:", error);
+    }
+});
+
 // Memory for trivia game
 let triviaGame = {
     isActive: false,
@@ -31,11 +126,10 @@ const triviaQuestions = [
     }
 ];
 
-// Trivia command - NUCLEAR OPTION: Payload inside ack()
+// Trivia command
 app.command("/cosmic-trivia", async ({ ack }) => {
     try {
         if (triviaGame.isActive) {
-            // Respond instantly inside the handshake
             await ack({
                 response_type: "in_channel",
                 text: "🚀 A trivia game is already running! Answer the current question."
@@ -50,7 +144,6 @@ app.command("/cosmic-trivia", async ({ ack }) => {
 
         const firstQuestion = triviaQuestions[0].question;
 
-        // Send a completely flat string payload directly inside ack()
         await ack({
             response_type: "in_channel",
             text: `🚀 *Cosmic Trivia Started!* First person to type the correct answer in chat gets the point.\n\n❓ *Question 1:* ${firstQuestion}`
@@ -62,19 +155,16 @@ app.command("/cosmic-trivia", async ({ ack }) => {
     }
 });
 
-// Listen for answers - CRASH-PROOFED
+// Listen for answers
 app.message(async ({ message, say }) => {
     try {
-        // 1. Ignore if game isn't active or if a bot is talking
         if (!triviaGame.isActive || message.bot_id) return;
         
-        // 2. SAFETY CHECK: Ignore the message if it doesn't contain text data (prevents crashes)
         if (!message.text) return;
         
         let currentQuestion = triviaQuestions[triviaGame.currentQuestionIndex];
         let userAnswer = message.text.trim().toLowerCase();
         
-        // 3. Match the answer
         if (userAnswer === currentQuestion.answer) {
             let winner = `<@${message.user}>`;
             triviaGame.scores[winner] = (triviaGame.scores[winner] || 0) + 1;
@@ -101,7 +191,7 @@ app.message(async ({ message, say }) => {
     }
 });
 
-// Reset command - NUCLEAR OPTION: Payload inside ack()
+// Reset command
 app.command("/cosmic-reset", async ({ ack }) => {
     try {
         triviaGame.isActive = false;
@@ -118,7 +208,7 @@ app.command("/cosmic-reset", async ({ ack }) => {
     }
 });
 
-// Help command - Moved to direct ack() for speed
+// Help command
 app.command("/cosmic-help", async ({ ack }) => {
     await ack({
         text: `🚀 *CosmicBot Available Commands:*\n• \`/cosmic-ping\` - Check bot latency\n• \`/cosmic-catfact\` - Get a live cat fact\n• \`/cosmic-joke\` - Get a random joke\n• \`/cosmic-trivia\` - Play a trivia game`
