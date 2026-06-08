@@ -199,10 +199,27 @@ app.command("/cosmic-reset", async ({ ack }) => {
 });
 
 // Help command
-app.command("/cosmic-help", async ({ ack }) => {
-    await ack({
-        text: `🚀 *CosmicBot Available Commands:*\n• \`/cosmic-mine\` - Spawn a clicker mining game\n• \`/cosmic-trivia\` - Play a trivia game\n• \`/cosmic-ping\` - Check bot latency\n• \`/cosmic-catfact\` - Get a live cat fact\n• \`/cosmic-joke\` - Get a random joke`
-    });
+app.command("/cosmic-help", async ({ ack, command, client }) => { 
+    try {
+        await ack(); 
+
+        await client.chat.postEphemeral({
+            channel: command.channel_id,
+            user: command.user_id,
+            text: "🚀 *CosmicBot Available Commands:*",
+            blocks: [
+                {
+                    type: "section",
+                    text: {
+                        type: "mrkdwn",
+                        text: `🚀 *CosmicBot Available Commands:*\n\n• \`/cosmic-mine\` - Spawn a clicker mining game for stardust ⛏️\n• \`/spawn-bomb\` - Start a chaotic game of Cosmic Hot Potato 💣\n• \`/cosmic-trivia\` - Play a quick trivia game 🧠\n• \`/cosmic-ping\` - Check bot latency 📶\n• \`/cosmic-catfact\` - Get a live cat fact 🐱\n• \`/cosmic-joke\` - Get a random space joke 🛸`
+                    }
+                }
+            ]
+        });
+    } catch (error) {
+        console.error("Error running help command:", error);
+    }
 });
 
 //ping command
@@ -262,7 +279,7 @@ app.command("/cosmic-bomb", async ({ ack, command, client }) => {
 
         bombGame.isActive = true;
         bombGame.channelId = command.channel_id;
-        bombGame.currentHolder = command.user_id; // First holder is the person who spawned it
+        bombGame.currentHolder = command.user_id; 
         bombGame.timeLeft = 30;
 
         const result = await client.chat.postMessage({
@@ -297,12 +314,13 @@ app.command("/cosmic-bomb", async ({ ack, command, client }) => {
 
         //countdown
         bombGame.timerInterval = setInterval(async () => {
-            bombGame.timeLeft -= 2; // Decrement time
+            bombGame.timeLeft -= 2;
 
             if (bombGame.timeLeft <= 0) {
-                // BOOM! Explosion logic
                 clearInterval(bombGame.timerInterval);
+    
                 bombGame.isActive = false;
+                bombGame.timerInterval = null;
 
                 await client.chat.update({
                     channel: bombGame.channelId,
@@ -365,6 +383,7 @@ app.action("pass_the_bomb", async ({ ack, body, client }) => {
         await ack();
         const clickerId = body.user.id;
         const channelId = body.channel.id;
+
         if (clickerId !== bombGame.currentHolder) {
             await client.chat.postEphemeral({
                 channel: channelId,
@@ -376,11 +395,26 @@ app.action("pass_the_bomb", async ({ ack, body, client }) => {
         const memberList = await client.conversations.members({
             channel: channelId
         });
-        let activePlayers = memberList.members.filter(id => id !== clickerId);
-        if (activePlayers.length === 0) {
-            activePlayers = [clickerId]; 
+
+        const allMembers = memberList.members;
+        let onlinePlayers = [];
+        for (const memberId of allMembers) {
+            if (memberId === clickerId) continue; 
+
+            try {
+                const presence = await client.users.getPresence({ user: memberId });
+                                if (presence.presence === "active") {
+                    onlinePlayers.push(memberId);
+                }
+            } catch (err) {
+                console.error(`Skipping presence check for ${memberId}`);
+            }
         }
-        const randomVictim = activePlayers[Math.floor(Math.random() * activePlayers.length)];
+        if (onlinePlayers.length === 0) {
+            const backupPlayers = allMembers.filter(id => id !== clickerId);
+            onlinePlayers = backupPlayers.length > 0 ? backupPlayers : [clickerId];
+        }
+        const randomVictim = onlinePlayers[Math.floor(Math.random() * onlinePlayers.length)];
         bombGame.currentHolder = randomVictim;
         await client.chat.update({
             channel: bombGame.channelId,
@@ -412,7 +446,7 @@ app.action("pass_the_bomb", async ({ ack, body, client }) => {
         });
 
     } catch (error) {
-        console.error("Error passing bomb:", error);
+        console.error("Error passing bomb to online user:", error);
     }
 });
 
