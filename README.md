@@ -11,6 +11,7 @@ Features & Commands:
 * /cosmic-ping - Checks the bot's current network latency.
 * /cosmic-catfact & /cosmic-joke - Gets cat facts or space jokes to keep the chat fun.
 
+(I only used AI (copilot) for debugging when I had no idea what was wrong.)
 
 If you want to run this project locally:
    ```bash
